@@ -1,53 +1,82 @@
-mod bridge;
-mod cfg;
 mod packet;
 mod state;
 
-use std::path::Path;
+use std::{
+    io::ErrorKind::WouldBlock,
+    net::{SocketAddr, UdpSocket},
+};
 
-use anyhow::{Ok, Result};
+use anyhow::{Context, Result};
 
-use bridge::SitlBridge;
-use sdk::{ActCmds, Imu, Rb};
+use packet::Pwm;
 use state::SitlState;
 
+const SITL_LISTEN_PORT: &str = "9002";
+const SEND_BUF_CAPACITY: usize = 512;
+
 pub struct Ap {
-    bridge:      SitlBridge,
-    timestamp:   f64,
-    pub t_accum: f64,
-    state_accum: f64,
-    prev_cmds:   ActCmds,
+    socket:    UdpSocket,
+    sitl_addr: SocketAddr,
+    recv_buf:  Vec<u8>,
+    send_buf:  Vec<u8>,
+    pwm:       Pwm,
 }
 
 impl Ap {
-    pub fn connect(addr: &str, cfg_path: impl AsRef<Path>) -> Result<Self> {
-        Ok(Self {
-            bridge:      SitlBridge::new(addr, cfg_path)?,
-            timestamp:   0.0,
-            t_accum:     0.0,
-            state_accum: 0.0,
-            prev_cmds:   ActCmds::default(),
-        })
+    pub fn connect(addr: &str, pwm_ver: usize) -> Result<Self> {
+        let bind_addr = format!("{addr}:{SITL_LISTEN_PORT}");
+        let socket = UdpSocket::bind(&bind_addr).context(format!("Failed to bind to {}", bind_addr))?;
+        let pwm = Pwm::new(pwm_ver)?;
+        let mut recv_buf = vec![0u8; pwm.size];
+        let sitl_addr = loop {
+            let (size, addr) = socket.recv_from(&mut recv_buf)?;
+            if pwm.parse(&recv_buf[..size]).is_err() {
+                continue;
+            }
+            break addr;
+        };
+        socket.set_nonblocking(true)?;
+        Ok(Self { socket, sitl_addr, recv_buf, send_buf: Vec::with_capacity(SEND_BUF_CAPACITY), pwm })
     }
 
-    pub fn servo(&mut self) -> Result<ActCmds> {
-        if let Some(cmds) = self.bridge.receive_servo()? {
-            self.prev_cmds = cmds;
-        }
-        Ok(self.prev_cmds)
-    }
+    /**
+    gyro, acc, pos, vel order: y, x, -z
 
-    pub fn sync(&mut self, quad_dt: f64, imu: &Imu, rb: &Rb) -> Result<()> {
-        self.state_accum += quad_dt;
-        if self.state_accum >= self.bridge.frame_dt {
-            self.bridge.send_state(SitlState::new(self.timestamp, imu, rb))?;
-            self.state_accum = self.state_accum.rem_euclid(self.bridge.frame_dt);
-        }
-        self.timestamp += quad_dt;
+    quat order: w, j, i, -k
+    */
+    pub fn sync(
+        &mut self,
+        timestamp: f64,
+        gyro: [f64; 3],
+        accel_body: [f64; 3],
+        position: [f64; 3],
+        velocity: [f64; 3],
+        quaternion: [f64; 4],
+    ) -> Result<()> {
+        self.send_buf.clear();
+        serde_json::to_writer(
+            &mut self.send_buf,
+            &SitlState::new(timestamp, gyro, accel_body, position, velocity, quaternion),
+        )?;
+        self.send_buf.push(b'\n');
+        self.socket.send_to(&self.send_buf, self.sitl_addr)?;
         Ok(())
     }
 
-    pub fn sim_rate_hz(&self) -> f64 {
-        1.0 / self.bridge.frame_dt
+    pub fn receive_servos(&mut self) -> Result<Option<Vec<f64>>> {
+        let mut latest_servos = None;
+        loop {
+            match self.socket.recv_from(&mut self.recv_buf) {
+                Ok((size, addr)) => {
+                    if addr == self.sitl_addr && size == self.recv_buf.len() {
+                        latest_servos = Some(self.pwm.servos(&self.recv_buf));
+                    }
+                }
+                Err(e) if e.kind() == WouldBlock => {
+                    return Ok(latest_servos);
+                }
+                Err(e) => return Err(e.into()),
+            }
+        }
     }
 }
