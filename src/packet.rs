@@ -9,12 +9,12 @@ const PWM_32_SIZE: usize = 72;
 const PWM_16_MAGIC: u16 = 18458;
 const PWM_32_MAGIC: u16 = 29569;
 
-pub(super) struct Pwm {
+pub(super) struct RecvPacket {
     pub(super) size: usize,
     magic:           u16,
 }
 
-impl Pwm {
+impl RecvPacket {
     pub(super) fn new(ver: usize) -> Result<Self> {
         match ver {
             16 => Ok(Self { size: PWM_16_SIZE, magic: PWM_16_MAGIC }),
@@ -34,13 +34,12 @@ impl Pwm {
         Ok(())
     }
 
-    pub(super) fn servos(&self, bytes: &[u8]) -> Vec<f64> {
-        bytes[8..self.size]
-            .chunks_exact(2)
-            .map(|pwm| {
-                let val = u16::from_le_bytes([pwm[0], pwm[1]]);
-                val.saturating_sub(PWM_MIN) as f64 / PWM_CONVERT
-            })
-            .collect()
+    pub(super) fn servos(&self, bytes: &[u8]) -> [f64; 32] {
+        let mut servos = [0.0; 32];
+        for (servo, pwm) in servos.iter_mut().zip(bytes[8..self.size].chunks_exact(2)) {
+            let val = u16::from_le_bytes([pwm[0], pwm[1]]);
+            *servo = val.saturating_sub(PWM_MIN) as f64 / PWM_CONVERT;
+        }
+        servos
     }
 }
