@@ -8,7 +8,8 @@ fn main() -> Result<()> {
 
     loop {
         ap.send(
-            Msg::new(timer.elapsed().as_secs_f64()).with_state(
+            Msg::new(
+                timer.elapsed().as_secs_f64(),
                 [0.0, 0.0, 0.0],
                 [0.0, 0.0, -9.81],
                 [0.0, 0.0, 0.0],

@@ -58,9 +58,9 @@ impl Bridge {
     /// ArduPilot expects this to be called continuously at the SITL sensor
     /// update rate. Sending a single message and exiting will usually make AP
     /// report a link timeout.
-    pub fn send(&mut self, msg: Msg) -> Result<()> {
+    pub fn send(&mut self, msg: impl Into<Msg>) -> Result<()> {
         self.send_buf.clear();
-        serde_json::to_writer(&mut self.send_buf, &msg)?;
+        serde_json::to_writer(&mut self.send_buf, &msg.into())?;
         self.send_buf.push(b'\n');
         self.socket.send_to(&self.send_buf, self.sitl_addr)?;
         Ok(())

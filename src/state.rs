@@ -148,21 +148,30 @@ impl Battery {
 }
 
 impl Msg {
-    /// Creates a message with required fields initialized to zero/identity.
-    ///
-    /// # Note
-    /// For normal simulation use, call [`Self::with_state`] or an SDK helper
-    /// such as `with_quad` before sending.
+    /// Creates a message with all required aircraft state fields.
     ///
     /// # Arguments
     /// * `timestamp` - Simulation timestamp (seconds).
-    pub fn new(timestamp: f64) -> Self {
+    /// * `gyro` - Angular velocity in ArduPilot JSON frame (rad/s).
+    /// * `accel_body` - Body-frame acceleration in ArduPilot JSON frame
+    ///   (m/s^2).
+    /// * `position` - Position in ArduPilot JSON frame (m).
+    /// * `velocity` - Velocity in ArduPilot JSON frame (m/s).
+    /// * `quaternion` - Attitude quaternion in ArduPilot JSON order.
+    pub fn new(
+        timestamp: f64,
+        gyro: [f64; 3],
+        accel_body: [f64; 3],
+        position: [f64; 3],
+        velocity: [f64; 3],
+        quaternion: [f64; 4],
+    ) -> Self {
         Self {
             timestamp,
-            imu: Imu::new([0.0; 3], [0.0; 3]),
-            position: [0.0; 3],
-            velocity: [0.0; 3],
-            quaternion: [1.0, 0.0, 0.0, 0.0],
+            imu: Imu::new(gyro, accel_body),
+            position,
+            velocity,
+            quaternion,
             rng_1: None,
             rng_2: None,
             rng_3: None,
@@ -175,31 +184,6 @@ impl Msg {
             rc: None,
             battery: None,
         }
-    }
-
-    /// Sets the required aircraft state fields.
-    ///
-    /// # Arguments
-    /// * `gyro` - Angular velocity in ArduPilot JSON frame (rad/s).
-    /// * `accel_body` - Body-frame acceleration in ArduPilot JSON frame
-    ///   (m/s^2).
-    /// * `position` - Position in ArduPilot JSON frame (m).
-    /// * `velocity` - Velocity in ArduPilot JSON frame (m/s).
-    /// * `quaternion` - Attitude quaternion in ArduPilot JSON order.
-    pub fn with_state(
-        mut self,
-        gyro: [f64; 3],
-        accel_body: [f64; 3],
-        position: [f64; 3],
-        velocity: [f64; 3],
-        quaternion: [f64; 4],
-    ) -> Self {
-        self.imu.gyro = gyro;
-        self.imu.accel_body = accel_body;
-        self.position = position;
-        self.velocity = velocity;
-        self.quaternion = quaternion;
-        self
     }
 
     /// Sets one rangefinder distance.
