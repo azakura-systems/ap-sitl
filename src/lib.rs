@@ -1,5 +1,5 @@
+mod msg;
 mod packet;
-mod state;
 
 use std::{
     io::ErrorKind::WouldBlock,
@@ -8,8 +8,9 @@ use std::{
 
 use anyhow::{Context, Result};
 
+pub use msg::Msg;
 use packet::RecvPacket;
-pub use state::Msg;
+pub use packet::{Pwm, Pwm16, Pwm32};
 
 const SITL_LISTEN_PORT: &str = "9002";
 const SEND_BUF_CAPACITY: usize = 512;
@@ -19,15 +20,15 @@ const SEND_BUF_CAPACITY: usize = 512;
 /// Binds to the JSON SITL input port, waits for the first PWM packet from
 /// ArduPilot, then sends [`Msg`] state packets back to that same endpoint.
 /// Servo packets can be drained with [`Self::receive_servos`].
-pub struct Bridge {
+pub struct Sitl<P: Pwm> {
     socket:    UdpSocket,
     sitl_addr: SocketAddr,
     recv_buf:  Vec<u8>,
     send_buf:  Vec<u8>,
-    pwm:       RecvPacket,
+    pwm:       RecvPacket<P>,
 }
 
-impl Bridge {
+impl<P: Pwm> Sitl<P> {
     /// Connects to an ArduPilot JSON SITL instance on `addr`.
     ///
     /// Blocks until a valid PWM packet is received, then switches the socket to
@@ -35,12 +36,11 @@ impl Bridge {
     ///
     /// # Arguments
     /// * `addr` - Interface/address to bind on, usually `"127.0.0.1"`.
-    /// * `pwm_ver` - ArduPilot PWM packet version, either `16` or `32`.
-    pub fn connect(addr: &str, pwm_ver: usize) -> Result<Self> {
+    pub fn connect(addr: &str) -> Result<Self> {
         let bind_addr = format!("{addr}:{SITL_LISTEN_PORT}");
         let socket = UdpSocket::bind(&bind_addr).context(format!("Failed to bind to {}", bind_addr))?;
-        let pwm = RecvPacket::new(pwm_ver)?;
-        let mut recv_buf = vec![0u8; pwm.size];
+        let pwm = RecvPacket::<P>::new();
+        let mut recv_buf = vec![0u8; P::SIZE];
         let sitl_addr = loop {
             let (size, addr) = socket.recv_from(&mut recv_buf)?;
             if pwm.parse(&recv_buf[..size]).is_err() {

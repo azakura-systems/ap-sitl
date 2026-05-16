@@ -13,56 +13,56 @@ use serde::Serialize;
 /// * quaternion: `[w, i, j, k] -> [w, j, i, -k]`
 #[derive(Serialize)]
 pub struct Msg {
-    /// Simulation timestamp (seconds).
+    /// `timestamp (s)` physics time.
     timestamp:     f64,
-    /// IMU measurements.
+    /// `imu` measurement group.
     imu:           Imu,
-    /// Vehicle position in ArduPilot JSON frame (m).
+    /// `position(north, east, down) (m)` earth frame.
     position:      [f64; 3],
-    /// Vehicle velocity in ArduPilot JSON frame (m/s).
+    /// `velocity(north, east, down) (m/s)` earth frame.
     velocity:      [f64; 3],
-    /// Vehicle attitude quaternion in ArduPilot JSON order.
+    /// `quaternion(q1, q2, q3, q4)`.
     quaternion:    [f64; 4],
-    /// Rangefinder 1 distance (m).
+    /// `rng_1 (m)` rangefinder distance for driver instance 1.
     #[serde(skip_serializing_if = "Option::is_none")]
     rng_1:         Option<f64>,
-    /// Rangefinder 2 distance (m).
+    /// `rng_2 (m)` rangefinder distance for driver instance 2.
     #[serde(skip_serializing_if = "Option::is_none")]
     rng_2:         Option<f64>,
-    /// Rangefinder 3 distance (m).
+    /// `rng_3 (m)` rangefinder distance for driver instance 3.
     #[serde(skip_serializing_if = "Option::is_none")]
     rng_3:         Option<f64>,
-    /// Rangefinder 4 distance (m).
+    /// `rng_4 (m)` rangefinder distance for driver instance 4.
     #[serde(skip_serializing_if = "Option::is_none")]
     rng_4:         Option<f64>,
-    /// Rangefinder 5 distance (m).
+    /// `rng_5 (m)` rangefinder distance for driver instance 5.
     #[serde(skip_serializing_if = "Option::is_none")]
     rng_5:         Option<f64>,
-    /// Rangefinder 6 distance (m).
+    /// `rng_6 (m)` rangefinder distance for driver instance 6.
     #[serde(skip_serializing_if = "Option::is_none")]
     rng_6:         Option<f64>,
-    /// Optional windvane measurement.
+    /// `windvane` apparent wind measurement.
     #[serde(skip_serializing_if = "Option::is_none")]
     windvane:      Option<Windvane>,
-    /// Optional wind velocity vector in ArduPilot JSON frame (m/s).
+    /// `velocity_wind` 3D wind vector in m/s NED frame.
     #[serde(skip_serializing_if = "Option::is_none")]
     velocity_wind: Option<[f64; 3]>,
-    /// Optional airspeed measurement (m/s).
+    /// `airspeed (m/s)`.
     #[serde(skip_serializing_if = "Option::is_none")]
     airspeed:      Option<f64>,
-    /// Optional RC input channels (PWM).
+    /// `rc` optional R/C input data, up to 12 channels.
     #[serde(skip_serializing_if = "Option::is_none")]
     rc:            Option<RcInput>,
-    /// Optional battery measurement.
+    /// `battery` voltage and current measurement.
     #[serde(skip_serializing_if = "Option::is_none")]
     battery:       Option<Battery>,
 }
 
 #[derive(Serialize)]
 struct Imu {
-    /// Angular velocity in ArduPilot JSON frame (rad/s).
+    /// `gyro(roll, pitch, yaw) (radians/sec)` body frame.
     gyro:       [f64; 3],
-    /// Body-frame acceleration in ArduPilot JSON frame (m/s^2).
+    /// `accel_body(x, y, z) (m/s^2)` body frame.
     accel_body: [f64; 3],
 }
 
@@ -75,9 +75,10 @@ impl Imu {
 /// Windvane sensor measurement.
 #[derive(Serialize)]
 pub struct Windvane {
-    /// Wind direction.
+    /// `direction (radians)` clockwise relative to the front, 0 = head to
+    /// wind.
     direction: f64,
-    /// Wind speed (m/s).
+    /// `speed (m/s)`.
     speed:     f64,
 }
 
@@ -85,8 +86,9 @@ impl Windvane {
     /// Creates a windvane measurement.
     ///
     /// # Arguments
-    /// * `direction` - Wind direction in ArduPilot's expected convention.
-    /// * `speed` - Wind speed (m/s).
+    /// * `direction` (radians) - clockwise relative to the front,
+    ///   0 = head to wind.
+    /// * `speed` - speed of wind in m/s.
     pub fn new(direction: f64, speed: f64) -> Self {
         Self { direction, speed }
     }
@@ -134,9 +136,9 @@ impl RcInput {
 /// Battery sensor measurement.
 #[derive(Serialize)]
 pub struct Battery {
-    /// Battery voltage (V).
+    /// `voltage` in Volts.
     voltage: f64,
-    /// Battery current (A).
+    /// `current` in Amps.
     current: f64,
 }
 
@@ -148,16 +150,15 @@ impl Battery {
 }
 
 impl Msg {
-    /// Creates a message with all required aircraft state fields.
+    /// Creates a JSON input frame with all required fields.
     ///
     /// # Arguments
-    /// * `timestamp` - Simulation timestamp (seconds).
-    /// * `gyro` - Angular velocity in ArduPilot JSON frame (rad/s).
-    /// * `accel_body` - Body-frame acceleration in ArduPilot JSON frame
-    ///   (m/s^2).
-    /// * `position` - Position in ArduPilot JSON frame (m).
-    /// * `velocity` - Velocity in ArduPilot JSON frame (m/s).
-    /// * `quaternion` - Attitude quaternion in ArduPilot JSON order.
+    /// * `timestamp` - `(s)` physics time.
+    /// * `gyro` - `(roll, pitch, yaw) (radians/sec)` body frame.
+    /// * `accel_body` - `(x, y, z) (m/s^2)` body frame.
+    /// * `position` - `(north, east, down) (m)` earth frame.
+    /// * `velocity` - `(north, east, down) (m/s)` earth frame.
+    /// * `quaternion` - `(q1, q2, q3, q4)`.
     pub fn new(
         timestamp: f64,
         gyro: [f64; 3],
@@ -189,8 +190,8 @@ impl Msg {
     /// Sets one rangefinder distance.
     ///
     /// # Arguments
-    /// * `idx` - Rangefinder index, `1..=6`.
-    /// * `meters` - Distance reading (m).
+    /// * `idx` - Driver instance index, mapping to `rng_1` through `rng_6`.
+    /// * `meters` - rangefinder distance.
     ///
     /// # Panics
     /// Panics if `idx` is outside `1..=6`.
@@ -207,25 +208,36 @@ impl Msg {
         self
     }
 
-    /// Sets the windvane measurement.
+    /// Sets apparent wind data in the `windvane` field.
+    ///
+    /// # Arguments
+    /// * `direction` - `(radians)` clockwise relative to the front, 0 = head
+    ///   to wind.
+    /// * `speed` - `(m/s)`.
     pub fn with_windvane(mut self, direction: f64, speed: f64) -> Self {
         self.windvane = Some(Windvane::new(direction, speed));
         self
     }
 
-    /// Sets the wind velocity vector in ArduPilot JSON frame (m/s).
+    /// Sets 3D wind in `velocity_wind`.
+    ///
+    /// # Arguments
+    /// * `velocity` - 3D wind vector in m/s NED frame.
     pub fn with_wind_velocity(mut self, velocity: [f64; 3]) -> Self {
         self.velocity_wind = Some(velocity);
         self
     }
 
-    /// Sets the airspeed measurement (m/s).
+    /// Sets `airspeed (m/s)`.
     pub fn with_airspeed(mut self, airspeed: f64) -> Self {
         self.airspeed = Some(airspeed);
         self
     }
 
-    /// Sets twelve RC input channels as raw PWM values.
+    /// Sets optional R/C input data.
+    ///
+    /// # Arguments
+    /// * `channels` - Raw PWM values serialized as `rc_1` through `rc_12`.
     pub fn with_rc(mut self, channels: [u16; 12]) -> Self {
         self.rc = Some(RcInput::new(channels));
         self
@@ -234,8 +246,8 @@ impl Msg {
     /// Sets the battery measurement.
     ///
     /// # Arguments
-    /// * `voltage` - Battery voltage (V).
-    /// * `current` - Battery current (A).
+    /// * `voltage` - Battery voltage in Volts.
+    /// * `current` - Battery current in Amps.
     pub fn with_battery(mut self, voltage: f64, current: f64) -> Self {
         self.battery = Some(Battery::new(voltage, current));
         self

@@ -1,13 +1,17 @@
 use anyhow::Result;
-use ap_sitl::{Bridge, Msg};
+use ap_sitl::{Msg, Pwm16, Sitl};
 use rt_timer::Timer;
 
 fn main() -> Result<()> {
-    let mut ap = Bridge::connect("127.0.0.1", 16)?;
+    let mut ap = Sitl::<Pwm16>::connect("127.0.0.1")?;
+
+    // ArduPilot's 400 Hz loop expects physics updates at least 1.8x faster.
     let mut timer = Timer::from_hz(720.0);
 
     loop {
-        let _ = ap.receive_servos()?;
+        if let Some(servos) = ap.receive_servos()? {
+            println!("servos: {}, {}, {}, {}", servos[0], servos[1], servos[2], servos[3]);
+        };
 
         let timestamp = timer.elapsed().as_secs_f64();
         let gyro = [0.0, 0.0, 0.0];
