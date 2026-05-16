@@ -1,5 +1,5 @@
 [package]
-name = "ap-sitl"
+name = "ap_sitl"
 version = "0.1.0"
 edition = "2024"
 
