@@ -9,7 +9,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7f202df86484c868dbad7eaa557ef785d5c66295e41b460ef922eca0723b842c"
 
 [[package]]
-name = "ap-sitl"
+name = "ap_sitl"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -51,6 +51,8 @@ dependencies = [
 [[package]]
 name = "rt_timer"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a11809cc1ec9a992cda010904f4a8c251b66b57544d1780c8ddba30634887655"
 dependencies = [
  "spin_sleep",
 ]

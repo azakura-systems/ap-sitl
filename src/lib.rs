@@ -1,13 +1,10 @@
 mod msg;
 mod packet;
 
-use std::{
-    io::ErrorKind::WouldBlock,
-    net::{SocketAddr, UdpSocket},
-};
+use std::io::ErrorKind::WouldBlock;
+use std::net::{SocketAddr, UdpSocket};
 
 use anyhow::{Context, Result};
-
 pub use msg::Msg;
 use packet::RecvPacket;
 pub use packet::{Pwm, Pwm16, Pwm32};
@@ -38,7 +35,8 @@ impl<P: Pwm> Sitl<P> {
     /// * `addr` - Interface/address to bind on, usually `"127.0.0.1"`.
     pub fn connect(addr: &str) -> Result<Self> {
         let bind_addr = format!("{addr}:{SITL_LISTEN_PORT}");
-        let socket = UdpSocket::bind(&bind_addr).context(format!("Failed to bind to {}", bind_addr))?;
+        let socket =
+            UdpSocket::bind(&bind_addr).context(format!("Failed to bind to {}", bind_addr))?;
         let pwm = RecvPacket::<P>::new();
         let mut recv_buf = vec![0u8; P::SIZE];
         let sitl_addr = loop {
@@ -49,7 +47,13 @@ impl<P: Pwm> Sitl<P> {
             break addr;
         };
         socket.set_nonblocking(true)?;
-        Ok(Self { socket, sitl_addr, recv_buf, send_buf: Vec::with_capacity(SEND_BUF_CAPACITY), pwm })
+        Ok(Self {
+            socket,
+            sitl_addr,
+            recv_buf,
+            send_buf: Vec::with_capacity(SEND_BUF_CAPACITY),
+            pwm,
+        })
     }
 
     /// Sends one JSON state message to ArduPilot.
@@ -78,10 +82,10 @@ impl<P: Pwm> Sitl<P> {
                     if addr == self.sitl_addr && size == self.recv_buf.len() {
                         latest_servos = Some(self.pwm.servos(&self.recv_buf));
                     }
-                }
+                },
                 Err(e) if e.kind() == WouldBlock => {
                     return Ok(latest_servos);
-                }
+                },
                 Err(e) => return Err(e.into()),
             }
         }

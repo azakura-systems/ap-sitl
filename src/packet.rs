@@ -1,5 +1,6 @@
-use anyhow::{Result, anyhow};
 use std::marker::PhantomData;
+
+use anyhow::{Result, anyhow};
 
 const PWM_MIN: u16 = 1000;
 const PWM_CONVERT: f64 = 1000.0;
@@ -39,11 +40,18 @@ impl<P: Pwm> RecvPacket<P> {
 
     pub(super) fn parse(&self, bytes: &[u8]) -> Result<()> {
         if bytes.len() != P::SIZE {
-            return Err(anyhow!("Invalid packet size: expected {}, got {}", P::SIZE, bytes.len()));
+            return Err(anyhow!(
+                "Invalid packet size: expected {}, got {}",
+                P::SIZE,
+                bytes.len()
+            ));
         }
         let packet_magic = u16::from_le_bytes([bytes[0], bytes[1]]);
         if packet_magic != P::MAGIC {
-            return Err(anyhow!("Invalid magic: expected {}, got {packet_magic}", P::MAGIC));
+            return Err(anyhow!(
+                "Invalid magic: expected {}, got {packet_magic}",
+                P::MAGIC
+            ));
         }
         Ok(())
     }

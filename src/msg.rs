@@ -68,7 +68,10 @@ struct Imu {
 
 impl Imu {
     fn new(gyro: [f64; 3], acc: [f64; 3]) -> Self {
-        Self { gyro, accel_body: acc }
+        Self {
+            gyro,
+            accel_body: acc,
+        }
     }
 }
 
@@ -86,8 +89,8 @@ impl Windvane {
     /// Creates a windvane measurement.
     ///
     /// # Arguments
-    /// * `direction` (radians) - clockwise relative to the front,
-    ///   0 = head to wind.
+    /// * `direction` (radians) - clockwise relative to the front, 0 = head to
+    ///   wind.
     /// * `speed` - speed of wind in m/s.
     pub fn new(direction: f64, speed: f64) -> Self {
         Self { direction, speed }
@@ -211,8 +214,8 @@ impl Msg {
     /// Sets apparent wind data in the `windvane` field.
     ///
     /// # Arguments
-    /// * `direction` - `(radians)` clockwise relative to the front, 0 = head
-    ///   to wind.
+    /// * `direction` - `(radians)` clockwise relative to the front, 0 = head to
+    ///   wind.
     /// * `speed` - `(m/s)`.
     pub fn with_windvane(mut self, direction: f64, speed: f64) -> Self {
         self.windvane = Some(Windvane::new(direction, speed));

@@ -10,7 +10,10 @@ fn main() -> Result<()> {
 
     loop {
         if let Some(servos) = ap.receive_servos()? {
-            println!("servos: {}, {}, {}, {}", servos[0], servos[1], servos[2], servos[3]);
+            println!(
+                "servos: {}, {}, {}, {}",
+                servos[0], servos[1], servos[2], servos[3]
+            );
         };
 
         let timestamp = timer.elapsed().as_secs_f64();
